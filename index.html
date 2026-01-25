@@ -1,11 +1,50 @@
 <!DOCTYPE html>
-<html>
-    <head>
-        <title>Gift Generator</title>
-        <link rel="stylesheet" href="styles.css">
-    </head>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pick A Gift</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
 
-    <body>
-        
-    </body>
+  <!-- HERO SECTION -->
+  <section class="hero" id="hero">
+    <img src="assets/svg/bgdeco.svg" alt="" class="hero-deco" />
+
+    <div class="hero-content">
+      <h1>PICK A GIFT</h1>
+      <p class="subtitle">Gift ideas you won’t regret.</p>
+
+      <div class="hero-text">
+        <p>Quick questions.</p>
+        <p>Thoughtful suggestions.</p>
+      </div>
+
+      <button class="primary-btn" id="startBtn">Start</button>
+    </div>
+  </section>
+
+  <!-- RESULTS SECTION -->
+  <section class="results" id="results">
+    <h2>Here are our picks for you</h2>
+
+    <div class="results-grid">
+      <div class="gift-card" id="gift1"></div>
+      <div class="gift-card" id="gift2"></div>
+      <div class="gift-card" id="gift3"></div>
+
+      <div class="refine-card">
+        <div class="refine-header">
+          <p>Not quite right?</p>
+          <span class="refresh" id="refreshBtn">↻</span>
+        </div>
+
+        <p class="refine-sub">Tell us what went wrong</p>
+        <textarea id="feedback" placeholder="eg. likes coffee."></textarea>
+      </div>
+    </div>
+  </section>
+<script src="script.js"></script>
+</body>
 </html>
