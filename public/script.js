@@ -6,8 +6,36 @@ const formData = {
   recipient: null,
   budget: 100,
   style: null,
-  additionalInfo: ""
+  notes: ""
 };
+
+// AI Prompt Template
+const PROMPT_TEMPLATE = `You are a thoughtful gifting expert who suggests practical, creative, and meaningful gifts.
+
+Task:
+Suggest 5 gift ideas based on the details below. The gifts should feel intentional, not generic.
+
+Details:
+Occasion: {{occasion}}
+Recipient: {{recipient}}
+Budget: ₹{{budget}}
+Preferred gift style: {{style}}
+Additional notes: {{notes}}
+
+Rules:
+- Stay within the given budget.
+- Avoid cliché or overused gifts unless they are clearly justified.
+- Prioritize usefulness, emotional value, or personalization.
+- If details are vague, make reasonable assumptions and state them subtly.
+
+Output format (strict JSON):
+[
+  {
+    "gift": "Gift name",
+    "why": "1–2 sentence explanation of why this gift fits the person and occasion",
+    "price_range": "Approximate price"
+  }
+]`;
 
 // ======================
 // SECTION SWITCHING
@@ -89,7 +117,7 @@ if (budgetRange && budgetValue) {
 const additionalInfoInput = document.getElementById("additionalInfo");
 if (additionalInfoInput) {
   additionalInfoInput.addEventListener("input", (e) => {
-    formData.additionalInfo = e.target.value;
+    formData.notes = e.target.value;
   });
 }
 
@@ -98,20 +126,38 @@ if (additionalInfoInput) {
 // ======================
 const generateBtn = document.getElementById("generateBtn");
 if (generateBtn) {
-  generateBtn.addEventListener("click", () => {
+  generateBtn.addEventListener("click", async () => {
     console.log("Form Data:", formData);
     
-    // Basic validation
+    // Validation
     if (!formData.occasion || !formData.recipient) {
       alert("Please select an occasion and recipient!");
       return;
     }
     
-    // Show results
-    showSection("results");
+    if (!formData.style) {
+      alert("Please select a preferred gift style!");
+      return;
+    }
     
-    // TODO: Here you would normally fetch gift suggestions
-    // For now, just showing the results page
+    // Show loading state
+    generateBtn.textContent = "Generating ideas...";
+    generateBtn.disabled = true;
+    
+    try {
+      // Generate gifts
+      const gifts = await generateGifts(formData);
+      
+      // Show results
+      displayGifts(gifts);
+      showSection("results");
+    } catch (error) {
+      console.error("Error generating gifts:", error);
+      alert("Oops! Something went wrong. Please try again.");
+    } finally {
+      generateBtn.textContent = "Generate Ideas";
+      generateBtn.disabled = false;
+    }
   });
 }
 
@@ -130,6 +176,82 @@ if (feedbackInput) {
 // HELPER FUNCTIONS
 // ======================
 
+// Build prompt from template
+function buildPrompt(data) {
+  let prompt = PROMPT_TEMPLATE;
+  
+  prompt = prompt.replace('{{occasion}}', data.occasion || 'any occasion');
+  prompt = prompt.replace('{{recipient}}', data.recipient || 'someone special');
+  prompt = prompt.replace('{{budget}}', data.budget || '1000');
+  prompt = prompt.replace('{{style}}', data.style || 'thoughtful');
+  prompt = prompt.replace('{{notes}}', data.notes || 'No additional preferences');
+  
+  return prompt;
+}
+
+// Generate gifts using AI (Claude API)
+async function generateGifts(data) {
+  console.log("Mock AI generating gifts with:", data);
+
+  // Simulate network / AI thinking delay
+  await new Promise(resolve => setTimeout(resolve, 1200));
+
+  return [
+    {
+      gift: "Specialty Coffee Sampler",
+      why: "A curated set of coffee blends that feels thoughtful without adding clutter.",
+      price_range: "₹800–1200"
+    },
+    {
+      gift: "Minimal Desk Organizer",
+      why: "Keeps their workspace tidy while matching a clean, aesthetic vibe.",
+      price_range: "₹600–1000"
+    },
+    {
+      gift: "Personalized Bookmark",
+      why: "A subtle personal touch that feels intentional and useful for everyday reading.",
+      price_range: "₹300–500"
+    },
+    {
+      gift: "Scented Soy Candle",
+      why: "Adds warmth to their space without being overpowering or generic.",
+      price_range: "₹700–900"
+    },
+    {
+      gift: "Compact Travel Mug",
+      why: "Practical for daily routines and great for someone always on the move.",
+      price_range: "₹900–1300"
+    }
+  ];
+}
+
+// Display gifts in the results section
+function displayGifts(gifts) {
+  // Get first 3 gifts for the cards
+  const giftCards = [
+    document.getElementById("gift1"),
+    document.getElementById("gift2"),
+    document.getElementById("gift3")
+  ];
+  
+  gifts.slice(0, 3).forEach((gift, index) => {
+    const card = giftCards[index];
+    if (card) {
+      card.innerHTML = `
+        <div class="gift-content">
+          <h3 class="gift-name">${gift.gift}</h3>
+          <p class="gift-why">${gift.why}</p>
+          <p class="gift-price">${gift.price_range}</p>
+        </div>
+      `;
+    }
+  });
+  
+  // Store remaining gifts for refresh functionality
+  window.allGifts = gifts;
+  window.currentGiftIndex = 3;
+}
+
 // Get form data as JSON (useful for API calls later)
 function getFormData() {
   return JSON.stringify(formData);
@@ -141,7 +263,7 @@ function resetForm() {
   formData.recipient = null;
   formData.budget = 100;
   formData.style = null;
-  formData.additionalInfo = "";
+  formData.notes = "";
   
   // Clear UI selections
   document.querySelectorAll(".option.selected").forEach(opt => {
@@ -156,17 +278,6 @@ function resetForm() {
   if (additionalInfoInput) {
     additionalInfoInput.value = "";
   }
-}
-// ======================
-// REFRESH BUTTON
-// ======================
-const refreshBtn = document.getElementById("refreshBtn");
-if (refreshBtn) {
-  refreshBtn.addEventListener("click", () => {
-    console.log("Refreshing gifts with feedback:", feedbackInput.value);
-    // TODO: Regenerate gifts based on feedback
-    // You can call your gift generation function here
-  });
 }
 
 // Log for debugging

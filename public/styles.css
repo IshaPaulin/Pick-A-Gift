@@ -385,6 +385,34 @@ h1 {
 .feedback-input::placeholder {
   color: #999;
 }
+
+/* Add this at the end of styles.css */
+
+.gift-content {
+  text-align: left;
+  width: 100%;
+}
+
+.gift-name {
+  font-size: 24px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: #0b2d4d;
+}
+
+.gift-why {
+  font-size: 16px;
+  line-height: 1.5;
+  margin-bottom: 16px;
+  color: #0b2d4d;
+}
+
+.gift-price {
+  font-size: 18px;
+  font-weight: 600;
+  color: #0b2d4d;
+  margin: 0;
+}
 /* ======================
    RESPONSIVE
 ====================== */
