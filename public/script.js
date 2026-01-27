@@ -1,4 +1,4 @@
-//script.js
+//script.js - UPDATED FOR VERCEL DEPLOYMENT
 // ======================
 // STATE MANAGEMENT
 // ======================
@@ -247,7 +247,9 @@ async function generateGifts(data) {
       previouslyShown: previouslyShownGifts // Send exclusion list to backend
     };
     
-    const response = await fetch("http://localhost:3000/generate", {
+    // ⚠️ UPDATED: Use relative path for Vercel deployment
+    // Works both locally (with vercel dev) and in production
+    const response = await fetch("/api/generate", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"

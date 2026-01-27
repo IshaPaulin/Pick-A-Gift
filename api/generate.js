@@ -1,20 +1,32 @@
-import express from "express";
-import cors from "cors";
-import dotenv from "dotenv";
+// api/generate.js - Vercel Serverless Function
 import fetch from "node-fetch";
 
-dotenv.config();
+export default async function handler(req, res) {
+  // Enable CORS
+  res.setHeader('Access-Control-Allow-Credentials', true);
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-const app = express();
-app.use(cors());
-app.use(express.json());
+  // Handle preflight request
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
 
-const API_KEY = process.env.GEMINI_API_KEY;
-console.log("API KEY LOADED:", API_KEY ? "YES" : "NO");
+  // Only allow POST
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
 
-app.post("/generate", async (req, res) => {
   try {
     const { occasion, recipient, budget, style, notes, previouslyShown } = req.body;
+    
+    // Get API key from environment variable
+    const API_KEY = process.env.GEMINI_API_KEY;
+    
+    if (!API_KEY) {
+      return res.status(500).json({ error: 'API key not configured' });
+    }
 
     // Build the prompt with exclusions
     let prompt = `Suggest exactly 3 unique and creative gift ideas within ₹${budget} for a ${recipient} during ${occasion}. Style preference: ${style}.`;
@@ -94,8 +106,4 @@ Provide fresh, thoughtful suggestions that feel personal and intentional.`;
     console.error("SERVER ERROR:", err);
     res.status(500).json({ error: "Gift generation failed", message: err.message });
   }
-});
-
-app.listen(3000, () => {
-  console.log("Server running on http://localhost:3000");
-});
+}
