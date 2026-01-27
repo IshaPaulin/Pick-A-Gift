@@ -1,3 +1,4 @@
+//script.js
 // ======================
 // STATE MANAGEMENT
 // ======================
@@ -9,11 +10,14 @@ const formData = {
   notes: ""
 };
 
+// Track all previously suggested gifts
+let previouslyShownGifts = [];
+
 // AI Prompt Template
 const PROMPT_TEMPLATE = `You are a thoughtful gifting expert who suggests practical, creative, and meaningful gifts.
 
 Task:
-Suggest 5 gift ideas based on the details below. The gifts should feel intentional, not generic.
+Suggest 3 gift ideas based on the details below. The gifts should feel intentional, not generic.
 
 Details:
 Occasion: {{occasion}}
@@ -27,15 +31,20 @@ Rules:
 - Avoid cliché or overused gifts unless they are clearly justified.
 - Prioritize usefulness, emotional value, or personalization.
 - If details are vague, make reasonable assumptions and state them subtly.
+- Keep gift names concise (max 8-10 words)
+- Keep explanations brief and punchy (max 25-30 words, 1-2 sentences)
+{{exclude_previous}}
 
 Output format (strict JSON):
-[
-  {
-    "gift": "Gift name",
-    "why": "1–2 sentence explanation of why this gift fits the person and occasion",
-    "price_range": "Approximate price"
-  }
-]`;
+{
+  "gifts": [
+    {
+      "gift": "Short, catchy gift name (max 10 words)",
+      "why": "Brief, punchy explanation (max 30 words)",
+      "price_range": "Approximate price"
+    }
+  ]
+}`;
 
 // ======================
 // SECTION SWITCHING
@@ -140,6 +149,9 @@ if (generateBtn) {
       return;
     }
     
+    // Reset previously shown gifts for new search
+    previouslyShownGifts = [];
+    
     // Show loading state
     generateBtn.textContent = "Generating ideas...";
     generateBtn.disabled = true;
@@ -162,13 +174,43 @@ if (generateBtn) {
 }
 
 // ======================
-// FEEDBACK INPUT (Results page)
+// REFRESH BUTTON (Results page)
 // ======================
-const feedbackInput = document.getElementById("feedbackInput");
-if (feedbackInput) {
-  feedbackInput.addEventListener("input", (e) => {
-    console.log("Feedback:", e.target.value);
-    // TODO: Handle regenerating gifts with feedback
+const refreshBtn = document.getElementById("refreshBtn");
+if (refreshBtn) {
+  refreshBtn.addEventListener("click", async () => {
+    const feedbackInput = document.getElementById("feedbackInput");
+    const additionalFeedback = feedbackInput ? feedbackInput.value : "";
+    
+    // Show loading state
+    refreshBtn.disabled = true;
+    refreshBtn.style.opacity = "0.6";
+    
+    try {
+      // Generate new gifts with additional feedback
+      const updatedFormData = { ...formData };
+      if (additionalFeedback) {
+        updatedFormData.notes = formData.notes 
+          ? `${formData.notes}. Also: ${additionalFeedback}` 
+          : additionalFeedback;
+      }
+      
+      const gifts = await generateGifts(updatedFormData);
+      
+      // Display new gifts
+      displayGifts(gifts);
+      
+      // Clear feedback input
+      if (feedbackInput) {
+        feedbackInput.value = "";
+      }
+    } catch (error) {
+      console.error("Error refreshing gifts:", error);
+      alert("Oops! Couldn't refresh. Please try again.");
+    } finally {
+      refreshBtn.disabled = false;
+      refreshBtn.style.opacity = "1";
+    }
   });
 }
 
@@ -186,70 +228,84 @@ function buildPrompt(data) {
   prompt = prompt.replace('{{style}}', data.style || 'thoughtful');
   prompt = prompt.replace('{{notes}}', data.notes || 'No additional preferences');
   
+  // Add exclusion list if we have previously shown gifts
+  if (previouslyShownGifts.length > 0) {
+    const exclusionText = `\n- DO NOT suggest any of these gifts that were already shown: ${previouslyShownGifts.join(', ')}`;
+    prompt = prompt.replace('{{exclude_previous}}', exclusionText);
+  } else {
+    prompt = prompt.replace('{{exclude_previous}}', '');
+  }
+  
   return prompt;
 }
 
-// Generate gifts using AI (Claude API)
+// Generate gifts using AI (Gemini API via backend)
 async function generateGifts(data) {
-  console.log("Mock AI generating gifts with:", data);
+  try {
+    const requestBody = {
+      ...data,
+      previouslyShown: previouslyShownGifts // Send exclusion list to backend
+    };
+    
+    const response = await fetch("http://localhost:3000/generate", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(requestBody)
+    });
 
-  // Simulate network / AI thinking delay
-  await new Promise(resolve => setTimeout(resolve, 1200));
+    const result = await response.json();
+    console.log("API response:", result);
 
-  return [
-    {
-      gift: "Specialty Coffee Sampler",
-      why: "A curated set of coffee blends that feels thoughtful without adding clutter.",
-      price_range: "₹800–1200"
-    },
-    {
-      gift: "Minimal Desk Organizer",
-      why: "Keeps their workspace tidy while matching a clean, aesthetic vibe.",
-      price_range: "₹600–1000"
-    },
-    {
-      gift: "Personalized Bookmark",
-      why: "A subtle personal touch that feels intentional and useful for everyday reading.",
-      price_range: "₹300–500"
-    },
-    {
-      gift: "Scented Soy Candle",
-      why: "Adds warmth to their space without being overpowering or generic.",
-      price_range: "₹700–900"
-    },
-    {
-      gift: "Compact Travel Mug",
-      why: "Practical for daily routines and great for someone always on the move.",
-      price_range: "₹900–1300"
+    if (!result.gifts || !Array.isArray(result.gifts)) {
+      throw new Error("Invalid response format from server");
     }
-  ];
+
+    // Add new gifts to the exclusion list
+    result.gifts.forEach(gift => {
+      if (gift.gift && !previouslyShownGifts.includes(gift.gift)) {
+        previouslyShownGifts.push(gift.gift);
+      }
+    });
+
+    return result.gifts;
+  } catch (error) {
+    console.error("Error generating gifts:", error);
+    throw error;
+  }
 }
 
 // Display gifts in the results section
 function displayGifts(gifts) {
-  // Get first 3 gifts for the cards
+  if (!Array.isArray(gifts)) return;
+
   const giftCards = [
     document.getElementById("gift1"),
     document.getElementById("gift2"),
     document.getElementById("gift3")
   ];
-  
-  gifts.slice(0, 3).forEach((gift, index) => {
-    const card = giftCards[index];
-    if (card) {
-      card.innerHTML = `
-        <div class="gift-content">
-          <h3 class="gift-name">${gift.gift}</h3>
-          <p class="gift-why">${gift.why}</p>
-          <p class="gift-price">${gift.price_range}</p>
-        </div>
-      `;
-    }
+
+  giftCards.forEach((card, index) => {
+    if (!card || !gifts[index]) return;
+
+    // Restart animation
+    card.classList.remove("gift-card");
+    void card.offsetWidth; // force reflow
+    card.classList.add("gift-card");
+
+    // Stagger animation
+    card.style.animationDelay = `${index * 0.12}s`;
+
+    const gift = gifts[index];
+    card.innerHTML = `
+      <div class="gift-content">
+        <h3 class="gift-name">${gift.gift ?? "Gift idea"}</h3>
+        <p class="gift-why">${gift.why ?? ""}</p>
+        <p class="gift-price">${gift.price_range ?? ""}</p>
+      </div>
+    `;
   });
-  
-  // Store remaining gifts for refresh functionality
-  window.allGifts = gifts;
-  window.currentGiftIndex = 3;
 }
 
 // Get form data as JSON (useful for API calls later)
@@ -264,6 +320,7 @@ function resetForm() {
   formData.budget = 100;
   formData.style = null;
   formData.notes = "";
+  previouslyShownGifts = [];
   
   // Clear UI selections
   document.querySelectorAll(".option.selected").forEach(opt => {
