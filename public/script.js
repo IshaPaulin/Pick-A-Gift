@@ -1,4 +1,4 @@
-//script.js - UPDATED FOR VERCEL DEPLOYMENT
+//script.js - VERCEL VERSION
 // ======================
 // STATE MANAGEMENT
 // ======================
@@ -12,39 +12,6 @@ const formData = {
 
 // Track all previously suggested gifts
 let previouslyShownGifts = [];
-
-// AI Prompt Template
-const PROMPT_TEMPLATE = `You are a thoughtful gifting expert who suggests practical, creative, and meaningful gifts.
-
-Task:
-Suggest 3 gift ideas based on the details below. The gifts should feel intentional, not generic.
-
-Details:
-Occasion: {{occasion}}
-Recipient: {{recipient}}
-Budget: ₹{{budget}}
-Preferred gift style: {{style}}
-Additional notes: {{notes}}
-
-Rules:
-- Stay within the given budget.
-- Avoid cliché or overused gifts unless they are clearly justified.
-- Prioritize usefulness, emotional value, or personalization.
-- If details are vague, make reasonable assumptions and state them subtly.
-- Keep gift names concise (max 8-10 words)
-- Keep explanations brief and punchy (max 25-30 words, 1-2 sentences)
-{{exclude_previous}}
-
-Output format (strict JSON):
-{
-  "gifts": [
-    {
-      "gift": "Short, catchy gift name (max 10 words)",
-      "why": "Brief, punchy explanation (max 30 words)",
-      "price_range": "Approximate price"
-    }
-  ]
-}`;
 
 // ======================
 // SECTION SWITCHING
@@ -218,28 +185,7 @@ if (refreshBtn) {
 // HELPER FUNCTIONS
 // ======================
 
-// Build prompt from template
-function buildPrompt(data) {
-  let prompt = PROMPT_TEMPLATE;
-  
-  prompt = prompt.replace('{{occasion}}', data.occasion || 'any occasion');
-  prompt = prompt.replace('{{recipient}}', data.recipient || 'someone special');
-  prompt = prompt.replace('{{budget}}', data.budget || '1000');
-  prompt = prompt.replace('{{style}}', data.style || 'thoughtful');
-  prompt = prompt.replace('{{notes}}', data.notes || 'No additional preferences');
-  
-  // Add exclusion list if we have previously shown gifts
-  if (previouslyShownGifts.length > 0) {
-    const exclusionText = `\n- DO NOT suggest any of these gifts that were already shown: ${previouslyShownGifts.join(', ')}`;
-    prompt = prompt.replace('{{exclude_previous}}', exclusionText);
-  } else {
-    prompt = prompt.replace('{{exclude_previous}}', '');
-  }
-  
-  return prompt;
-}
-
-// Generate gifts using AI (Gemini API via backend)
+// Generate gifts using AI (Gemini API via Vercel serverless function)
 async function generateGifts(data) {
   try {
     const requestBody = {
@@ -247,8 +193,7 @@ async function generateGifts(data) {
       previouslyShown: previouslyShownGifts // Send exclusion list to backend
     };
     
-    // ⚠️ UPDATED: Use relative path for Vercel deployment
-    // Works both locally (with vercel dev) and in production
+    // ✅ CRITICAL: Use /api/generate for Vercel deployment
     const response = await fetch("/api/generate", {
       method: "POST",
       headers: {
@@ -256,6 +201,11 @@ async function generateGifts(data) {
       },
       body: JSON.stringify(requestBody)
     });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+    }
 
     const result = await response.json();
     console.log("API response:", result);
@@ -340,4 +290,4 @@ function resetForm() {
 }
 
 // Log for debugging
-console.log("Gift Generator initialized");
+console.log("Gift Generator initialized - Vercel Version");
